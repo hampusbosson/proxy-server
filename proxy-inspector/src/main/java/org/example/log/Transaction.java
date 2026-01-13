@@ -1,3 +1,11 @@
+/**
+ * Represents a single HTTP proxy transaction.
+ *
+ * A transaction captures request metadata (method, host, path),
+ * timing information, transferred response byte size, and the final verdict
+ * for a single HTTP request.
+ */
+
 package org.example.log;
 
 public class Transaction {

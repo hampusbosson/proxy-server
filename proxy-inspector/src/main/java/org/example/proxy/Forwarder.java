@@ -2,14 +2,13 @@ package org.example.proxy;
 
 import org.example.http.HttpRequest;
 import org.example.http.HttpSerializer;
-import org.example.http.InvalidRequestException;
+import org.example.log.Transaction;
 
 import java.io.*;
 import java.net.InetSocketAddress;
 import java.net.Socket;
 import java.net.SocketAddress;
 import java.nio.charset.StandardCharsets;
-import java.util.Map;
 
 public class Forwarder {
     private final HttpRequest request;
@@ -21,7 +20,7 @@ public class Forwarder {
     }
 
 
-    public void forwardToServer(OutputStream clientOut) {
+    public void forwardToServer(OutputStream clientOut, Transaction transaction) {
         String host = request.getHost();
         int port = request.getPort();
 
@@ -55,10 +54,15 @@ public class Forwarder {
             // 2) send response from server back to client
             byte[] buffer = new byte[8192];
             int n;
+            long bytesFromServer = 0;
             while ((n = serverIn.read(buffer)) != -1) {
+                bytesFromServer += n;
                 clientOut.write(buffer, 0, n);
                 clientOut.flush();
             }
+
+            transaction.setBytesFromServer(bytesFromServer); // set response bytes to transaction object
+            transaction.setEndNs(System.nanoTime()); // set end time for response
 
 
         } catch (IOException e) {

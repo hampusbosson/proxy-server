@@ -4,6 +4,7 @@ import org.example.http.HttpParser;
 import org.example.http.HttpRequest;
 import org.example.http.HttpSerializer;
 import org.example.log.Transaction;
+import org.example.log.Verdict;
 import org.example.proxy.Forwarder;
 
 import java.io.BufferedReader;
@@ -25,6 +26,8 @@ public class ClientConnectionHandler implements Callable<Void> {
 
     @Override
     public Void call() {
+        Transaction requestTransaction = null;
+
         try {
             int updatedCount = connectionCounter.incrementAndGet(); // update client-connection count
             // 1) read request
@@ -37,16 +40,24 @@ public class ClientConnectionHandler implements Callable<Void> {
             HttpRequest request = parser.readRequest();
             System.out.println("new request from client: " + request);
 
-            Transaction requestTransaction = new Transaction(request.getMethod(), request.getHost(), request.getPort(), request.getPath(), System.nanoTime());
-
 
             // 3) forward to end server
             HttpSerializer serializer = new HttpSerializer();
+            // transaction object for info logging
+            requestTransaction = new Transaction(request.getMethod(), request.getHost(), request.getPort(), request.getPath(), System.nanoTime());
             Forwarder forwarder = new Forwarder(request, serializer);
-            forwarder.forwardToServer(connection.getOutputStream());
+            forwarder.forwardToServer(connection.getOutputStream(), requestTransaction);
+
+            requestTransaction.setVerdict(Verdict.ALLOWED); // on success, set path to allowed
+            System.out.println(requestTransaction); // log transaction
 
         } catch (Exception e) {
-            System.err.println("Error: " + e.getMessage());
+            if (requestTransaction != null) {
+                requestTransaction.setVerdict(Verdict.ERROR);
+                requestTransaction.setErrorMessage(e.getMessage());
+                requestTransaction.setEndNs(System.nanoTime());
+                System.out.println(requestTransaction);
+            }
         } finally {
             try {
                 connection.close();
