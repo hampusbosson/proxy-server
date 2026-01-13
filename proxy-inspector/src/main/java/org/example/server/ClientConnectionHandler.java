@@ -3,6 +3,7 @@ package org.example.server;
 import org.example.http.HttpParser;
 import org.example.http.HttpRequest;
 import org.example.http.HttpSerializer;
+import org.example.log.Transaction;
 import org.example.proxy.Forwarder;
 
 import java.io.BufferedReader;
@@ -34,7 +35,10 @@ public class ClientConnectionHandler implements Callable<Void> {
             // 2) parse and print request
             parser = new HttpParser(in);
             HttpRequest request = parser.readRequest();
-            System.out.println("new request: " + request);
+            System.out.println("new request from client: " + request);
+
+            Transaction requestTransaction = new Transaction(request.getMethod(), request.getHost(), request.getPort(), request.getPath(), System.nanoTime());
+
 
             // 3) forward to end server
             HttpSerializer serializer = new HttpSerializer();
@@ -54,6 +58,8 @@ public class ClientConnectionHandler implements Callable<Void> {
         }
         return null;
     }
+
+
 
     private void printClientInfo(Socket connection, int counter) {
         String clientHost = connection.getInetAddress().toString();

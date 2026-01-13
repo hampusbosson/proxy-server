@@ -1,4 +1,4 @@
-package org.example.proxy;
+package org.example.http;
 
 public class InvalidRequestException extends RuntimeException {
     public InvalidRequestException(String message) {

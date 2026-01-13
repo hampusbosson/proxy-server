@@ -9,8 +9,7 @@ public class HttpSerializer {
 
     public String serializeRequest(HttpRequest req) {
         String method = req.getMethod();
-        String originalTarget = req.getTarget();
-        String targetForServer = toOriginFormTarget(originalTarget); // convert target URL for end server
+        String targetForServer = req.getPath(); // convert target URL for end server
         String version = req.getVersion();
         Map<String, String> headers = req.getHeaders();
         String body = req.getBody();
@@ -88,28 +87,5 @@ public class HttpSerializer {
             }
         }
         return null;
-    }
-
-
-    private String toOriginFormTarget(String target) {
-        if (target == null || target.isEmpty()) {
-            return "/";
-        }
-
-        if (target.startsWith("/")) {
-            return target;
-        }
-
-        if (target.startsWith("http://") || target.startsWith("https://")) {
-            try {
-                URI uri = URI.create(target);
-                String path = (uri.getRawPath() == null || uri.getRawPath().isEmpty()) ? "/" : uri.getRawPath();
-                String query = uri.getRawQuery();
-                return (query == null) ? path : path + "?" + query;
-            } catch (IllegalArgumentException ignored) {
-
-            }
-        }
-        return target;
     }
 }
