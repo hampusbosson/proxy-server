@@ -20,10 +20,13 @@ public class HttpParser {
         }
         requestLine = requestLine.trim();
         if (requestLine.isEmpty()) {
-            throw new IOException("Empty request line");
+            throw new InvalidRequestException("Empty request line");
         }
 
         String[] parts = requestLine.split("\\s+");
+        if (parts.length != 3) {
+            throw new InvalidRequestException("Invalid request line");
+        }
 
         String method = parts[0];
         String target = parts[1];
@@ -38,6 +41,10 @@ public class HttpParser {
             }
 
             int colonIndex = line.indexOf(":");
+
+            if (colonIndex <= 0) {
+                throw new InvalidRequestException("Invalid header line");
+            }
 
             String key = line.substring(0, colonIndex).trim();
             String value = line.substring(colonIndex + 1).trim();
