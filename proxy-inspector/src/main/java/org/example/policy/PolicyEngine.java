@@ -6,6 +6,7 @@ import java.util.Map;
 import java.util.Set;
 
 public final class PolicyEngine {
+    private static final RateLimiter RATE_LIMITER = new RateLimiter(30, 10_000, 5 * 60_000); // no more than 30 requests per 10 seconds, evict after 5 min idle
 
     // immutable host block rules, TODO: load from file later
     private static final HostBlockRule HOST_RULE = new HostBlockRule(Set.of(
@@ -19,24 +20,27 @@ public final class PolicyEngine {
             "api.foo.com", Set.of("/debug")
     ));
 
-    public static PolicyDecision evaluate(HttpRequest request /*, String clientIp*/) {
+    public static PolicyDecision evaluate(HttpRequest request, String clientIp) {
         String targetHost = request.getHost();
         String targetPath = request.getPath();
-        //String method = request.getMethod(); //TODO: needed for rate limit per clientIP later
+        // String method = request.getMethod(); //TODO: needed for rate limit per clientIP later
+
+        RATE_LIMITER.evictIdle();
+        if (!RATE_LIMITER.allow(clientIp)) {
+            return PolicyDecision.block(429, "Too many requests");
+        }
 
         // block whole hosts
         PolicyDecision decision = HOST_RULE.evaluateHost(targetHost);
-        if (decision != null) {
+        if (decision != null && decision.isBlocked()) {
             return decision;
         }
 
         // block paths for specific hosts
         decision = PATH_RULE.evaluatePathForHost(targetHost, targetPath);
-        if (decision != null) {
+        if (decision != null && decision.isBlocked()) {
             return decision;
         }
-
-        //TODO: Rate limit per clientIP (429), method specific rules
 
         return PolicyDecision.allow();
     }

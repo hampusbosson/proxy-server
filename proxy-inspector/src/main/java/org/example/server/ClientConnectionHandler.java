@@ -29,6 +29,7 @@ public class ClientConnectionHandler implements Callable<Void> {
     @Override
     public Void call() {
         Transaction transaction = null;
+        String clientIp = connection.getInetAddress().getHostAddress();
 
         try {
             int updatedCount = connectionCounter.incrementAndGet(); // update client-connection count
@@ -43,9 +44,10 @@ public class ClientConnectionHandler implements Callable<Void> {
             if (request == null) {
                 return null;
             }
+
             // 3) evaluate request, if blocked write error and return null
             transaction = new Transaction(request.getMethod(), request.getHost(), request.getPort(), request.getPath(), System.nanoTime());
-            PolicyDecision decision = PolicyEngine.evaluate(request);
+            PolicyDecision decision = PolicyEngine.evaluate(request, clientIp);
             if (decision.isBlocked()) {
                 transaction.setVerdict(Verdict.BLOCKED);
                 transaction.setErrorMessage(decision.getReason());
@@ -53,17 +55,16 @@ public class ClientConnectionHandler implements Callable<Void> {
                 transaction.setBytesFromServer(0); // no forwarding, no bytes sent
                 System.out.println(transaction);
 
-                writeErrorResponse(decision.getHttpStatus(), "Forbidden", decision.getReason());
+                writeErrorResponse(decision.getHttpStatus(), statusText(decision.getHttpStatus()), decision.getReason());
                 return null;
             }
+
             // log request if not blocked
             System.out.println("new request from client: " + request);
 
 
             // 4) forward to end server
             HttpSerializer serializer = new HttpSerializer();
-            // transaction object for info logging
-            transaction = new Transaction(request.getMethod(), request.getHost(), request.getPort(), request.getPath(), System.nanoTime());
             Forwarder forwarder = new Forwarder(request, serializer);
             forwarder.forwardToServer(connection.getOutputStream(), transaction);
 
@@ -135,8 +136,18 @@ public class ClientConnectionHandler implements Callable<Void> {
             connection.getOutputStream().write(bodyBytes);
             connection.getOutputStream().flush();
         } catch (IOException ignored) {
-            // nothing more to do if we cant write the error back
+            // nothing more to do if unable to write the error back
         }
 
+    }
+
+    private String statusText(int status) {
+        return switch (status) {
+            case 400 -> "Bad Request";
+            case 403 -> "Forbidden";
+            case 429 -> "Too Many Requests";
+            case 502 -> "Bad Gateway";
+            default -> "Error";
+        };
     }
 }
