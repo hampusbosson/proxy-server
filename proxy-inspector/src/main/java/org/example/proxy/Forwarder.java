@@ -66,7 +66,7 @@ public class Forwarder {
 
 
         } catch (IOException e) {
-            throw new RuntimeException("Failed to forward to " + host + ":" + port + " cause: ", e);
+            throw new RuntimeException("Failed to forward to " + host + ":" + port, e);
         }
     }
 
