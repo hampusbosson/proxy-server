@@ -4,6 +4,7 @@ import org.example.http.HttpParser;
 import org.example.http.HttpRequest;
 import org.example.http.HttpSerializer;
 import org.example.log.Transaction;
+import org.example.log.TransactionStore;
 import org.example.log.Verdict;
 import org.example.policy.PolicyDecision;
 import org.example.policy.PolicyEngine;
@@ -30,6 +31,7 @@ public class ClientConnectionHandler implements Callable<Void> {
     public Void call() {
         Transaction transaction = null;
         String clientIp = connection.getInetAddress().getHostAddress();
+        TransactionStore store = ProxyServer.getTransactionStore();
 
         try {
             int updatedCount = connectionCounter.incrementAndGet(); // update client-connection count
@@ -55,13 +57,15 @@ public class ClientConnectionHandler implements Callable<Void> {
                 transaction.setBytesFromServer(0); // no forwarding, no bytes sent
                 System.out.println(transaction);
 
+                store.add(transaction); // ADD BLOCKED TRANSACTION TO TRANSACTION STORE
+                System.out.println("store size=" + store.list().size());
+
                 writeErrorResponse(decision.getHttpStatus(), statusText(decision.getHttpStatus()), decision.getReason());
                 return null;
             }
 
             // log request if not blocked
             System.out.println("new request from client: " + request);
-
 
             // 4) forward to end server
             HttpSerializer serializer = new HttpSerializer();
@@ -71,6 +75,9 @@ public class ClientConnectionHandler implements Callable<Void> {
             transaction.setVerdict(Verdict.ALLOWED); // on success, set path to allowed
             System.out.println(transaction); // log transaction
 
+            store.add(transaction); // ADD ALLOWED TRANSACTION TO TRANSACTION STORE
+            System.out.println("store size=" + store.list().size());
+
         } catch (org.example.http.InvalidRequestException e) {
             // 400
             if (transaction != null) {
@@ -78,6 +85,9 @@ public class ClientConnectionHandler implements Callable<Void> {
                 transaction.setErrorMessage(e.getMessage());
                 transaction.setEndNs(System.nanoTime());
                 System.out.println(transaction);
+
+                store.add(transaction);
+                System.out.println("store size=" + store.list().size());
             }
             writeErrorResponse(400, "Bad Request", e.getMessage());
 
@@ -88,6 +98,9 @@ public class ClientConnectionHandler implements Callable<Void> {
                 transaction.setErrorMessage(e.getMessage());
                 transaction.setEndNs(System.nanoTime());
                 System.out.println(transaction);
+
+                store.add(transaction);
+                System.out.println("store size=" + store.list().size());
             }
             writeErrorResponse(502, "Bad Gateway", e.getMessage());
 
@@ -98,6 +111,9 @@ public class ClientConnectionHandler implements Callable<Void> {
                 transaction.setErrorMessage(e.getMessage());
                 transaction.setEndNs(System.nanoTime());
                 System.out.println(transaction);
+
+                store.add(transaction);
+                System.out.println("store size=" + store.list().size());
             }
             writeErrorResponse(502, "Bad Gateway", "Unexpected proxy error");
         } finally {

@@ -1,5 +1,7 @@
 package org.example.server;
 
+import org.example.log.TransactionStore;
+
 import java.io.IOException;
 import java.net.ServerSocket;
 import java.net.Socket;
@@ -14,6 +16,7 @@ public class ProxyServer {
     private final ExecutorService pool = Executors.newFixedThreadPool(50);
     private volatile boolean running;
     AtomicInteger counter = new AtomicInteger(0);
+    private static final TransactionStore TRANSACTION_STORE = new TransactionStore(1000);
 
     public ProxyServer() {
         try {
@@ -51,5 +54,9 @@ public class ProxyServer {
         } finally {
             pool.shutdown();
         }
+    }
+
+    public static TransactionStore getTransactionStore() {
+        return TRANSACTION_STORE;
     }
 }
