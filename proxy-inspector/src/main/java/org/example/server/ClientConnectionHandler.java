@@ -5,6 +5,8 @@ import org.example.http.HttpRequest;
 import org.example.http.HttpSerializer;
 import org.example.log.Transaction;
 import org.example.log.Verdict;
+import org.example.policy.PolicyDecision;
+import org.example.policy.PolicyEngine;
 import org.example.proxy.Forwarder;
 
 import java.io.BufferedReader;
@@ -41,10 +43,24 @@ public class ClientConnectionHandler implements Callable<Void> {
             if (request == null) {
                 return null;
             }
+            // 3) evaluate request, if blocked write error and return null
+            transaction = new Transaction(request.getMethod(), request.getHost(), request.getPort(), request.getPath(), System.nanoTime());
+            PolicyDecision decision = PolicyEngine.evaluate(request);
+            if (decision.isBlocked()) {
+                transaction.setVerdict(Verdict.BLOCKED);
+                transaction.setErrorMessage(decision.getReason());
+                transaction.setEndNs(System.nanoTime());
+                transaction.setBytesFromServer(0); // no forwarding, no bytes sent
+                System.out.println(transaction);
+
+                writeErrorResponse(decision.getHttpStatus(), "Forbidden", decision.getReason());
+                return null;
+            }
+            // log request if not blocked
             System.out.println("new request from client: " + request);
 
 
-            // 3) forward to end server
+            // 4) forward to end server
             HttpSerializer serializer = new HttpSerializer();
             // transaction object for info logging
             transaction = new Transaction(request.getMethod(), request.getHost(), request.getPort(), request.getPath(), System.nanoTime());

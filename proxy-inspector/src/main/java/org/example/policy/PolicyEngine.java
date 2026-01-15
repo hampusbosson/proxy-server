@@ -19,7 +19,7 @@ public final class PolicyEngine {
             "api.foo.com", Set.of("/debug")
     ));
 
-    public static PolicyDecision evaluate(HttpRequest request, String clientIp) {
+    public static PolicyDecision evaluate(HttpRequest request /*, String clientIp*/) {
         String targetHost = request.getHost();
         String targetPath = request.getPath();
         //String method = request.getMethod(); //TODO: needed for rate limit per clientIP later
