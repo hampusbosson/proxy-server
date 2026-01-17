@@ -6,6 +6,8 @@ import org.example.api.http.ApiHttp;
 import org.example.api.http.ResponseWriter;
 import org.example.api.json.JsonWriter;
 import org.example.log.Transaction;
+import org.example.log.TransactionStore;
+import org.example.util.Config;
 
 import java.io.IOException;
 import java.net.InetSocketAddress;
@@ -17,12 +19,14 @@ import java.util.concurrent.Executors;
  * Simple API server
  */
 public class ApiServer {
-    private static final int PORT = 9090;
-
+    private final int PORT;
     private final HttpServer apiServer;
-    private final TransactionController txController = new TransactionController();
+    private final TransactionController txController;
 
-    public ApiServer() {
+    public ApiServer(Config config, TransactionStore store) {
+        PORT = config.getApiPort();
+        this.txController = new TransactionController(store);
+
         try {
             this.apiServer = HttpServer.create(new InetSocketAddress(PORT), 0);
         } catch (IOException e) {

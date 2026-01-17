@@ -1,6 +1,8 @@
 package org.example.server;
 
 import org.example.log.TransactionStore;
+import org.example.policy.PolicyEngine;
+import org.example.util.Config;
 
 import java.io.IOException;
 import java.net.ServerSocket;
@@ -11,14 +13,19 @@ import java.util.concurrent.Executors;
 import java.util.concurrent.atomic.AtomicInteger;
 
 public class ProxyServer {
-    private static final int port = 8888;
+    private final int port;
     private final ServerSocket server;
     private final ExecutorService pool = Executors.newFixedThreadPool(50);
     private volatile boolean running;
     AtomicInteger counter = new AtomicInteger(0);
-    private static final TransactionStore TRANSACTION_STORE = new TransactionStore(1000);
+    private final TransactionStore store;
+    private final PolicyEngine engine;
 
-    public ProxyServer() {
+    public ProxyServer(Config config, TransactionStore store, PolicyEngine engine) {
+        this.store = store;
+        this.port = config.getProxyPort();
+        this.engine = engine;
+
         try {
             server = new ServerSocket(port);
         } catch(IOException e) {
@@ -33,7 +40,7 @@ public class ProxyServer {
             System.out.println("Server running on port: " + port);
             while (running) {
                 Socket connection = server.accept();
-                Callable<Void> task = new ClientConnectionHandler(connection, counter);
+                Callable<Void> task = new ClientConnectionHandler(connection, counter, store, engine);
                 pool.submit(task);
             }
         } catch (IOException e) {
@@ -56,7 +63,4 @@ public class ProxyServer {
         }
     }
 
-    public static TransactionStore getTransactionStore() {
-        return TRANSACTION_STORE;
-    }
 }

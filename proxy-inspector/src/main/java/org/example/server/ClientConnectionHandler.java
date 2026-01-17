@@ -21,17 +21,20 @@ import java.util.concurrent.atomic.AtomicInteger;
 public class ClientConnectionHandler implements Callable<Void> {
     private final Socket connection;
     private final AtomicInteger connectionCounter;
+    private final TransactionStore store;
+    private final PolicyEngine engine;
 
-    ClientConnectionHandler(Socket connection, AtomicInteger connectionCounter) {
+    ClientConnectionHandler(Socket connection, AtomicInteger connectionCounter, TransactionStore store, PolicyEngine engine) {
         this.connection = connection;
         this.connectionCounter = connectionCounter;
+        this.store = store;
+        this.engine = engine;
     }
 
     @Override
     public Void call() {
         Transaction transaction = null;
         String clientIp = connection.getInetAddress().getHostAddress();
-        TransactionStore store = ProxyServer.getTransactionStore();
 
         try {
             int updatedCount = connectionCounter.incrementAndGet(); // update client-connection count
@@ -49,7 +52,7 @@ public class ClientConnectionHandler implements Callable<Void> {
 
             // 3) evaluate request, if blocked write error and return null
             transaction = new Transaction(request.getMethod(), request.getHost(), request.getPort(), request.getPath(), System.nanoTime());
-            PolicyDecision decision = PolicyEngine.evaluate(request, clientIp);
+            PolicyDecision decision = engine.evaluate(request, clientIp);
             if (decision.isBlocked()) {
                 transaction.setVerdict(Verdict.BLOCKED);
                 transaction.setErrorMessage(decision.getReason());

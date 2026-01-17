@@ -22,11 +22,12 @@ import java.util.List;
 public class TransactionController {
     private static final int DEFAULT_LIMIT = 50;  // default number of transactions if no limit is provided
     private static final int MAX_LIMIT = 1000; // max limit for transactions to prevent large memory responses
-    private final TransactionStore store; // Shared transaction store (singleton owned by ProxyServer)
+    private final TransactionStore store;
 
-    public TransactionController() {
-        store = ProxyServer.getTransactionStore();
+    public TransactionController(TransactionStore store) {
+        this.store = store;
     }
+
 
     public ApiResponse<List<Transaction>> listTransactions(Integer limit, String verdictStr) {
         int n = clampLimit(limit);
