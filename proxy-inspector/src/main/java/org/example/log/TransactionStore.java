@@ -31,6 +31,11 @@ public class TransactionStore {
         return new ArrayList<>(deque); // snapshot copy
     }
 
+    // Returns the current number of stored transactions in a thread-safe manner
+    public synchronized int sizeSafe() {
+        return deque.size();
+    }
+
     // returns the latest n transactions in the right order
     public synchronized List<Transaction> getRecent(int n) {
         if (n <= 0) {

@@ -22,11 +22,13 @@ public class Main {
         TransactionStore store = new TransactionStore(config.getMaxTransactions());
         PolicyEngine policyEngine = new PolicyEngine(config);
 
+        // start proxy server
         if (config.getMode() == Mode.PROXY_ONLY || config.getMode() == Mode.BOTH) {
             ProxyServer proxy = new ProxyServer(config, store, policyEngine);
             new Thread(proxy::start, "proxy-server").start();
         }
 
+        // start api server
         if (config.getMode() == Mode.API_ONLY || config.getMode() == Mode.BOTH) {
             ApiServer api = new ApiServer(config, store);
             new Thread(api::start, "api-server").start();

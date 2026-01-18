@@ -39,7 +39,6 @@ public class Forwarder {
 
             targetSocket.connect(address, connectTimeoutMs); // connect and timeout after 3 seconds if not able to
             targetSocket.setSoTimeout(readTimeoutMs); // timeout after 15 seconds, avoids hanging forever
-            System.out.println("Connected to server " + host + " on port " + port);
 
             OutputStream serverOut = targetSocket.getOutputStream(); // used for sending to server
             InputStream serverIn = targetSocket.getInputStream(); // used for listening to server
@@ -48,8 +47,6 @@ public class Forwarder {
             byte[] rawBytes = rawRequest.getBytes(StandardCharsets.UTF_8);
             serverOut.write(rawBytes); // send raw bytes to server
             serverOut.flush();  // flush buffered bytes
-
-            System.out.println("Sending serialized request to end server: " + rawRequest);
 
             // 2) send response from server back to client
             byte[] buffer = new byte[8192];

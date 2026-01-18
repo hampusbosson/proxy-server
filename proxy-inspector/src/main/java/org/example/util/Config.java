@@ -11,6 +11,7 @@ public final class Config {
     private final int maxTransactions;
     private final Set<String> blockedHosts;
     private final Map<String, Set<String>> blockedPathsForHosts;
+    private final boolean verbose;
 
     public Config(
             Mode mode,
@@ -18,7 +19,8 @@ public final class Config {
             int apiPort,
             int maxTransactions,
             List<String> blockedHosts,
-            Map<String, List<String>> blockedPathsForHosts
+            Map<String, List<String>> blockedPathsForHosts,
+            boolean verbose
     ) {
         if (mode == null) {
             throw new IllegalArgumentException("mode is required");
@@ -37,6 +39,7 @@ public final class Config {
         this.proxyPort = proxyPort;
         this.apiPort = apiPort;
         this.maxTransactions = maxTransactions;
+        this.verbose = verbose;
 
         // Normalize blocked hosts
         if (blockedHosts == null) {
@@ -91,4 +94,5 @@ public final class Config {
     public int getMaxTransactions() { return maxTransactions; }
     public Set<String> getBlockedHosts() { return blockedHosts; }
     public Map<String, Set<String>> getBlockedPathsForHosts() { return blockedPathsForHosts; }
+    public boolean isVerbose() { return verbose; }
 }

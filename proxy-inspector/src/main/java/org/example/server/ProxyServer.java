@@ -20,8 +20,10 @@ public class ProxyServer {
     AtomicInteger counter = new AtomicInteger(0);
     private final TransactionStore store;
     private final PolicyEngine engine;
+    private final Config config;
 
     public ProxyServer(Config config, TransactionStore store, PolicyEngine engine) {
+        this.config = config;
         this.store = store;
         this.port = config.getProxyPort();
         this.engine = engine;
@@ -37,10 +39,10 @@ public class ProxyServer {
     public void start() {
         try {
             running = true;
-            System.out.println("Server running on port: " + port);
+            System.out.println("Proxy server running on port: " + port);
             while (running) {
                 Socket connection = server.accept();
-                Callable<Void> task = new ClientConnectionHandler(connection, counter, store, engine);
+                Callable<Void> task = new ClientConnectionHandler(connection, counter, store, engine, config);
                 pool.submit(task);
             }
         } catch (IOException e) {

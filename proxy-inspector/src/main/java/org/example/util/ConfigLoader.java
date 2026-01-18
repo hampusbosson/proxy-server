@@ -1,14 +1,9 @@
 package org.example.util;
 
-import java.io.BufferedReader;
-import java.io.IOException;
-import java.nio.charset.StandardCharsets;
-import java.nio.file.Files;
-import java.nio.file.Path;
 import java.util.*;
 
 /**
- * Loads runtime configuration from CLI args and (optionally) a simple config file.
+ * Loads configuration from CLI args only (no config file support).
  *
  * Supported flags:
  *   --mode=proxy|api|both
@@ -17,17 +12,8 @@ import java.util.*;
  *   --max-transactions=1000
  *   --block-host=example.com        (repeatable)
  *   --block-path=host:/path         (repeatable, e.g. example.com:/admin)
- *   --config=path/to/config.txt     (optional, simple line-based format)
+ *   --verbose
  *   --help
- *
- * Config file format (lines, '#' comments allowed):
- *   mode=both
- *   proxyPort=8888
- *   apiPort=9090
- *   maxTransactions=1000
- *   blockHost=httpbin.org
- *   blockPath=example.com:/admin
- *   blockPath=example.com:/private
  */
 public final class ConfigLoader {
 
@@ -45,48 +31,6 @@ public final class ConfigLoader {
         int proxyPort = 8888;
         int apiPort = 9090;
         int maxTransactions = 1000;
-        List<String> blockedHosts = new ArrayList<>();
-        Map<String, List<String>> blockedPathsForHosts = new HashMap<>();
-
-        // Optional config file first (so CLI flags can override)
-        if (parsed.configPath != null) {
-            Mode finalMode = mode;
-            int finalProxyPort = proxyPort;
-            int finalApiPort = apiPort;
-            int finalMaxTransactions = maxTransactions;
-            applyConfigFile(parsed.configPath, new ApplyTarget() {
-                @Override public void setMode(Mode m) { modeHolder.value = m; }
-                @Override public void setProxyPort(int p) { proxyPortHolder.value = p; }
-                @Override public void setApiPort(int p) { apiPortHolder.value = p; }
-                @Override public void setMaxTransactions(int n) { maxTxHolder.value = n; }
-                @Override public void addBlockedHost(String h) { blockedHosts.add(h); }
-                @Override public void addBlockedPath(String host, String path) {
-                    blockedPathsForHosts.computeIfAbsent(host, k -> new ArrayList<>()).add(path);
-                }
-
-                // holders so we can mutate from anonymous class cleanly
-                final Holder<Mode> modeHolder = new Holder<>(finalMode);
-                final Holder<Integer> proxyPortHolder = new Holder<>(finalProxyPort);
-                final Holder<Integer> apiPortHolder = new Holder<>(finalApiPort);
-                final Holder<Integer> maxTxHolder = new Holder<>(finalMaxTransactions);
-
-                @Override public Mode getMode() { return modeHolder.value; }
-                @Override public int getProxyPort() { return proxyPortHolder.value; }
-                @Override public int getApiPort() { return apiPortHolder.value; }
-                @Override public int getMaxTransactions() { return maxTxHolder.value; }
-            });
-
-            // Re-read current values from file-applier holders (see above)
-            // (This is a little verbose to keep everything in one file without extra classes.)
-            // We'll re-apply by loading the file into temp state and then overwriting defaults:
-            FileState fs = readConfigFileState(parsed.configPath);
-            if (fs.mode != null) mode = fs.mode;
-            if (fs.proxyPort != null) proxyPort = fs.proxyPort;
-            if (fs.apiPort != null) apiPort = fs.apiPort;
-            if (fs.maxTransactions != null) maxTransactions = fs.maxTransactions;
-            blockedHosts.addAll(fs.blockedHosts);
-            mergePaths(blockedPathsForHosts, fs.blockedPathsForHosts);
-        }
 
         // Apply CLI overrides
         if (parsed.mode != null) mode = parsed.mode;
@@ -94,24 +38,20 @@ public final class ConfigLoader {
         if (parsed.apiPort != null) apiPort = parsed.apiPort;
         if (parsed.maxTransactions != null) maxTransactions = parsed.maxTransactions;
 
-        blockedHosts.addAll(parsed.blockedHosts);
-        mergePaths(blockedPathsForHosts, parsed.blockedPathsForHosts);
-
         return new Config(
                 mode,
                 proxyPort,
                 apiPort,
                 maxTransactions,
-                blockedHosts,
-                blockedPathsForHosts
+                parsed.blockedHosts,
+                parsed.blockedPathsForHosts,
+                parsed.verbose
         );
     }
 
-    // ---------------- Parsing ----------------
-
+    //Parsing
     private static Args parseArgs(String[] args) {
         Args out = new Args();
-
         if (args == null) return out;
 
         for (String a : args) {
@@ -121,11 +61,6 @@ public final class ConfigLoader {
 
             if (s.equals("--help") || s.equals("-h")) {
                 out.help = true;
-                continue;
-            }
-
-            if (s.startsWith("--config=")) {
-                out.configPath = s.substring("--config=".length()).trim();
                 continue;
             }
 
@@ -162,6 +97,12 @@ public final class ConfigLoader {
                 continue;
             }
 
+            if (s.equals("--verbose")) {
+                out.verbose = true;
+                continue;
+            }
+
+            // hard fail on unknown args
             throw new UsageException("Unknown argument: " + s + "\n\n" + usage());
         }
 
@@ -206,68 +147,6 @@ public final class ConfigLoader {
         return new HostPath(host, path);
     }
 
-    // ---------------- Config file support ----------------
-
-    private static void applyConfigFile(String path, ApplyTarget target) {
-        // You can keep this method empty if you only want CLI.
-        // It's here so you can extend later without changing your public API.
-        // We read with readConfigFileState() and apply below.
-    }
-
-    private static FileState readConfigFileState(String pathStr) {
-        Path p = Path.of(pathStr);
-        if (!Files.exists(p)) {
-            throw new UsageException("Config file not found: " + pathStr);
-        }
-
-        FileState fs = new FileState();
-
-        try (BufferedReader br = Files.newBufferedReader(p, StandardCharsets.UTF_8)) {
-            String line;
-            while ((line = br.readLine()) != null) {
-                String s = line.trim();
-                if (s.isEmpty() || s.startsWith("#")) continue;
-
-                int eq = s.indexOf('=');
-                if (eq <= 0 || eq == s.length() - 1) {
-                    throw new UsageException("Invalid config line: " + s);
-                }
-
-                String key = s.substring(0, eq).trim();
-                String val = s.substring(eq + 1).trim();
-
-                switch (key) {
-                    case "mode" -> fs.mode = parseMode(val);
-                    case "proxyPort" -> fs.proxyPort = parseIntStrict(val, "proxyPort");
-                    case "apiPort" -> fs.apiPort = parseIntStrict(val, "apiPort");
-                    case "maxTransactions" -> fs.maxTransactions = parseIntStrict(val, "maxTransactions");
-                    case "blockHost" -> {
-                        if (!val.isEmpty()) fs.blockedHosts.add(val);
-                    }
-                    case "blockPath" -> {
-                        HostPath hp = parseHostPath(val);
-                        fs.blockedPathsForHosts.computeIfAbsent(hp.host, k -> new ArrayList<>()).add(hp.path);
-                    }
-                    default -> throw new UsageException("Unknown config key: " + key);
-                }
-            }
-        } catch (IOException e) {
-            throw new UsageException("Failed to read config file: " + e.getMessage());
-        }
-
-        return fs;
-    }
-
-    private static void mergePaths(Map<String, List<String>> into, Map<String, List<String>> from) {
-        if (from == null || from.isEmpty()) return;
-        for (Map.Entry<String, List<String>> e : from.entrySet()) {
-            String host = e.getKey();
-            List<String> paths = e.getValue();
-            if (host == null || paths == null) continue;
-            into.computeIfAbsent(host, k -> new ArrayList<>()).addAll(paths);
-        }
-    }
-
     // ---------------- Usage / Errors ----------------
 
     public static String usage() {
@@ -282,14 +161,13 @@ public final class ConfigLoader {
                   --max-transactions=1000
                   --block-host=example.com        (repeatable)
                   --block-path=host:/path         (repeatable, e.g. example.com:/admin)
-                  --config=path/to/config.txt     (optional)
+                  --verbose
                   --help
 
                 Examples:
                   java -jar proxyinspector.jar --mode=both
                   java -jar proxyinspector.jar --block-host=httpbin.org
                   java -jar proxyinspector.jar --block-path=example.com:/admin --block-path=example.com:/private
-                  java -jar proxyinspector.jar --config=proxyinspector.conf
                 """;
     }
 
@@ -297,47 +175,18 @@ public final class ConfigLoader {
         public UsageException(String message) { super(message); }
     }
 
-    // ---------------- Internal DTOs ----------------
+    // Internal DTOs
 
     private static final class Args {
         boolean help;
-        String configPath;
         Mode mode;
         Integer proxyPort;
         Integer apiPort;
         Integer maxTransactions;
         final List<String> blockedHosts = new ArrayList<>();
         final Map<String, List<String>> blockedPathsForHosts = new HashMap<>();
+        boolean verbose;
     }
 
-    private record HostPath(String host, String path) {
-    }
-
-    private static final class FileState {
-        Mode mode;
-        Integer proxyPort;
-        Integer apiPort;
-        Integer maxTransactions;
-        final List<String> blockedHosts = new ArrayList<>();
-        final Map<String, List<String>> blockedPathsForHosts = new HashMap<>();
-    }
-
-    private interface ApplyTarget {
-        void setMode(Mode m);
-        void setProxyPort(int p);
-        void setApiPort(int p);
-        void setMaxTransactions(int n);
-        void addBlockedHost(String h);
-        void addBlockedPath(String host, String path);
-
-        Mode getMode();
-        int getProxyPort();
-        int getApiPort();
-        int getMaxTransactions();
-    }
-
-    private static final class Holder<T> {
-        T value;
-        Holder(T value) { this.value = value; }
-    }
+    private record HostPath(String host, String path) {}
 }

@@ -16,7 +16,6 @@ public class ResponseWriter {
 
     /**
      * Handles CORS preflight (OPTIONS). If this was an OPTIONS request, we respond 204 and return true.
-     * Call this at the top of every handler and early-return if it returns true.
      */
     public static boolean handlePreflight(HttpExchange ex) throws IOException {
         if ("OPTIONS".equalsIgnoreCase(ex.getRequestMethod())) {
