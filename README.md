@@ -4,6 +4,10 @@ Proxy Inspector is a custom HTTP forward proxy written in Java with a developer-
 
 The project accepts HTTP traffic through a local proxy, applies simple policy rules, forwards allowed requests to the target server, records each transaction, and exposes a REST API used by the dashboard for live monitoring.
 
+## Dashboard Preview
+
+![Proxy Inspector dashboard](/Users/hampusbosson/Documents/projekt/Java/proxy-server/dashboard.png)
+
 ## Features
 
 - Custom HTTP forward proxy built without heavyweight frameworks
@@ -78,7 +82,7 @@ The backend is configured through command-line arguments only.
 
 | Option | Description | Default |
 | --- | --- | --- |
-| `--mode=proxy|api|both` | Start only the proxy, only the API, or both | `both` |
+| `--mode=proxy\|api\|both` | Start only the proxy, only the API, or both | `both` |
 | `--proxy-port=PORT` | Port for the HTTP forward proxy | `8888` |
 | `--api-port=PORT` | Port for the REST API | `9090` |
 | `--max-transactions=NUMBER` | Maximum number of in-memory transactions to retain | `1000` |
