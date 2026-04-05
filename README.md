@@ -6,7 +6,7 @@ The project accepts HTTP traffic through a local proxy, applies simple policy ru
 
 ## Dashboard Preview
 
-![Proxy Inspector dashboard](/Users/hampusbosson/Documents/projekt/Java/proxy-server/dashboard.png)
+![Proxy Inspector dashboard](./dashboard.png)
 
 ## Features
 
