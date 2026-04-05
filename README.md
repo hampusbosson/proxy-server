@@ -65,6 +65,20 @@ cd proxy-inspector
 mvn -q -DskipTests package
 ```
 
+### Run Tests
+
+```bash
+cd proxy-inspector
+mvn test
+```
+
+The backend test suite covers:
+
+- CLI configuration parsing
+- policy engine behavior
+- transaction filtering and statistics
+- HTTP request host/path parsing
+
 ### Run
 
 ```bash
