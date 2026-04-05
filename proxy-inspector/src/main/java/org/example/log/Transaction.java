@@ -13,6 +13,7 @@ public class Transaction {
     private final String host;
     private final int port;
     private final String path;
+    private final long timestampMs;
 
     private long startNs;
     private long endNs;
@@ -26,6 +27,7 @@ public class Transaction {
         this.host = host;
         this.port = port;
         this.path = path;
+        this.timestampMs = System.currentTimeMillis();
         this.startNs = startNs;
         this.verdict = Verdict.ALLOWED; // default, can change later
     }
@@ -66,6 +68,10 @@ public class Transaction {
 
     public String getPath() {
         return path;
+    }
+
+    public long getTimestampMs() {
+        return timestampMs;
     }
 
     public long getStartNs() {

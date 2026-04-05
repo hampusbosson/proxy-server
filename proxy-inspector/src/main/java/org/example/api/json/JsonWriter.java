@@ -64,6 +64,7 @@ public final class JsonWriter {
         // Transaction
         if (v instanceof Transaction t) {
             return "{"
+                    + "\"timestampMs\":" + t.getTimestampMs() + ","
                     + "\"method\":" + jsonString(t.getMethod()) + ","
                     + "\"host\":" + jsonString(t.getHost()) + ","
                     + "\"port\":" + t.getPort() + ","
